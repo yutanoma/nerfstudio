@@ -39,7 +39,8 @@ from torch import Tensor, nn
 from nerfstudio.cameras.rays import RaySamples
 from nerfstudio.utils import colors
 from nerfstudio.utils.math import safe_normalize
-from nerfstudio.utils.spherical_harmonics import components_from_spherical_harmonics
+from nerfstudio.utils.spherical_harmonics import \
+    components_from_spherical_harmonics
 
 BackgroundColor = Union[Literal["random", "last_sample", "black", "white"], Float[Tensor, "3"], Float[Tensor, "*bs 3"]]
 BACKGROUND_COLOR_OVERRIDE: Optional[Float[Tensor, "3"]] = None
@@ -328,7 +329,7 @@ class DepthRenderer(nn.Module):
         method: Depth calculation method.
     """
 
-    def __init__(self, method: Literal["median", "expected"] = "median") -> None:
+    def __init__(self, method: Literal["median", "expected", "boundary"] = "median") -> None:
         super().__init__()
         self.method = method
 
@@ -362,6 +363,21 @@ class DepthRenderer(nn.Module):
             median_index = torch.clamp(median_index, 0, steps.shape[-2] - 1)  # [..., 1]
             median_depth = torch.gather(steps[..., 0], dim=-1, index=median_index)  # [..., 1]
             return median_depth
+        if self.method == "boundary":
+            steps = (ray_samples.frustums.starts + ray_samples.frustums.ends) / 2
+
+            # Define a threshold for the weights
+            threshold = 0.01  # Example: Adjust based on your density/weight normalization
+
+            # Find the first sample where weight exceeds the threshold
+            boundary_mask = weights[..., 0] > threshold  # [..., num_samples]
+            boundary_index = torch.argmax(boundary_mask, dim=-1)  # First True index along the ray
+            boundary_index = torch.clamp(boundary_index, 0, steps.shape[-2] - 1)  # Ensure valid indices
+
+            # Extract the corresponding depth value
+            boundary_depth = torch.gather(steps[..., 0], dim=-1, index=boundary_index.unsqueeze(-1))  # [..., 1]
+
+            return boundary_depth
         if self.method == "expected":
             eps = 1e-10
             steps = (ray_samples.frustums.starts + ray_samples.frustums.ends) / 2
