@@ -371,7 +371,7 @@ class DepthRenderer(nn.Module):
 
             # Find the first sample where weight exceeds the threshold
             boundary_mask = weights[..., 0] > threshold  # [..., num_samples]
-            boundary_index = torch.argmax(boundary_mask, dim=-1)  # First True index along the ray
+            boundary_index = torch.argmax(boundary_mask.to(torch.int64), dim=-1)  # First True index along the ray
             boundary_index = torch.clamp(boundary_index, 0, steps.shape[-2] - 1)  # Ensure valid indices
 
             # Extract the corresponding depth value
