@@ -339,6 +339,7 @@ class DepthRenderer(nn.Module):
         ray_samples: RaySamples,
         ray_indices: Optional[Int[Tensor, "num_samples"]] = None,
         num_rays: Optional[int] = None,
+        thereshold: float = 0.01
     ) -> Float[Tensor, "*batch 1"]:
         """Composite samples along ray and calculate depths.
 
@@ -367,7 +368,6 @@ class DepthRenderer(nn.Module):
             steps = (ray_samples.frustums.starts + ray_samples.frustums.ends) / 2
 
             # Define a threshold for the weights
-            threshold = 0.01  # Example: Adjust based on your density/weight normalization
 
             # Find the first sample where weight exceeds the threshold
             boundary_mask = weights[..., 0] > threshold  # [..., num_samples]
