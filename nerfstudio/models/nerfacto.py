@@ -299,7 +299,7 @@ class NerfactoModel(Model):
             )
         return callbacks
 
-    def get_outputs(self, ray_bundle: RayBundle):
+    def get_outputs(self, ray_bundle: RayBundle, threshold: float = 0.01):
         # apply the camera optimizer pose tweaks
         if self.training:
             self.camera_optimizer.apply_to_raybundle(ray_bundle)
@@ -318,7 +318,7 @@ class NerfactoModel(Model):
             depth = self.renderer_depth(weights=weights, ray_samples=ray_samples)
 
             # use density instead of weight, see Wang et al. 2021 NeuS Fig 2a
-            boundary_depth = self.renderer_boundary(weights=field_outputs[FieldHeadNames.DENSITY], ray_samples=ray_samples)
+            boundary_depth = self.renderer_boundary(weights=field_outputs[FieldHeadNames.DENSITY], ray_samples=ray_samples, threshold=threshold)
         expected_depth = self.renderer_expected_depth(weights=weights, ray_samples=ray_samples)
         accumulation = self.renderer_accumulation(weights=weights)
 

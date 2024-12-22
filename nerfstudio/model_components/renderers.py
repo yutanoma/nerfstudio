@@ -339,7 +339,7 @@ class DepthRenderer(nn.Module):
         ray_samples: RaySamples,
         ray_indices: Optional[Int[Tensor, "num_samples"]] = None,
         num_rays: Optional[int] = None,
-        thereshold: float = 0.01
+        threshold: float = 0.01
     ) -> Float[Tensor, "*batch 1"]:
         """Composite samples along ray and calculate depths.
 
