@@ -314,11 +314,26 @@ class NerfactoModel(Model):
         ray_samples_list.append(ray_samples)
 
         rgb = self.renderer_rgb(rgb=field_outputs[FieldHeadNames.RGB], weights=weights)
+
         with torch.no_grad():
             depth = self.renderer_depth(weights=weights, ray_samples=ray_samples)
 
+            # get the density at the origin
+            density_origin = field_outputs[FieldHeadNames.DENSITY][:, 0]
+
             # use density instead of weight, see Wang et al. 2021 NeuS Fig 2a
-            boundary_depth = self.renderer_boundary(weights=field_outputs[FieldHeadNames.DENSITY], ray_samples=ray_samples, threshold=threshold)
+            steps = (ray_samples.frustums.starts + ray_samples.frustums.ends) / 2
+
+            # Define a threshold for the weights
+
+            # Find the first sample where weight exceeds the threshold
+            boundary_mask = field_outputs[FieldHeadNames.DENSITY][..., 0] > threshold  # [..., num_samples]
+            boundary_index = torch.argmax(boundary_mask.to(torch.int64), dim=-1)  # First True index along the ray
+            boundary_index = torch.clamp(boundary_index, 0, steps.shape[-2] - 1)  # Ensure valid indices
+
+            # Extract the corresponding depth value
+            boundary_depth = torch.gather(steps[..., 0], dim=-1, index=boundary_index.unsqueeze(-1))  # [..., 1]
+
         expected_depth = self.renderer_expected_depth(weights=weights, ray_samples=ray_samples)
         accumulation = self.renderer_accumulation(weights=weights)
 
@@ -327,7 +342,8 @@ class NerfactoModel(Model):
             "accumulation": accumulation,
             "depth": depth,
             "expected_depth": expected_depth,
-            "boundary_depth": boundary_depth
+            "boundary_depth": boundary_depth,
+            "density": density_origin
         }
 
         if self.config.predict_normals:
